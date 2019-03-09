@@ -8,31 +8,22 @@ class Process{
 	public:
 		char name;
 		int state;      //1:read; 2:running: 3:block
-		float io_time;
-		float cpu_burst;
+		int io_time;
+		int cpu_burst;
+		int arrive_time;
+		int wait_time;
+                int turnaround_time;
+                int cpu_remain;
+                int io_remain;
+                int preemptive;
 
                 /*Constructor*/
-		Process(char Name,float io,float cpu);
+		Process(char Name,int io,int cpu,int arrive);
 		Process(const Process &p); //copy
 
-		/*Mutator*/
-		void add_turnaround(); 
-		void add_wait();
-		void add_preemptive();
-		void run(int s);
-
 		/*Observer*/
-		float get_remain(int type) const;  //1:cpu 2:io
-		vector<float> get_times(int &prem) const; //only for copy and final output
-		bool IsFinished() const; //true if finished, false felse
+		bool IsFinished() const; //true if finished, false else
 
-	
-	private:
-		float wait_time;
-		float turnaround_time;
-		float cpu_remain;
-		float io_remain;	
-		int preemptive;	
-
+		
 };
 
