@@ -93,41 +93,57 @@ bool Process::IsProcessFinished() const{return (io_ptr == io_time.end() && cpu_p
 
 void Process::time_generation(float limit,float lamda){
 
-	arrive_time = drand48()*1000; //we used int instead float
-	cout << "Arrival: " << arrive_time  << endl;
+        while(1){
+		double ra = drand48();
+		arrive_time = -log(ra) / lamda; //we used int instead float
+		if(arrive_time < limit){break;}
+	}
 
 	int num_of_burst =  drand48()*100 + 1; //1-100
-	cout << "#b: " <<num_of_burst << endl;
-	int actual_cpu_time =  drand48()*1000;
-	cout <<"#cpu time: " <<actual_cpu_time << endl;
-	int actual_io_time =  drand48()*1000;
-	num_of_burst = 2;//test
-	//cout << "L: "<< lamda << endl;
-
-	for(int h=0; h<num_of_burst; h++){
-
-		if(h < (num_of_burst -1) ){io_time.push_back(actual_io_time);}
-		cpu_burst.push_back(actual_cpu_time);
-	}
+	//cout << "#b: " <<num_of_burst << endl;
+	//num_of_burst = 3; //test
 
 	interarrival.push_back(arrive_time);
-	for(int i=1; i<num_of_burst; i++){
-		double r = drand48();
-		int time = -log(r) / lamda;
-		
-		//cout << "t= "<<time << endl;
-		
-		if(time > limit) {
-                        cout << "S "<< time << endl;
-                        i--;
-                        continue;
-                }
+	
+	bool c1 = true;
+	bool c2 = true;
+	while(c1 || c2){
 
-		int x = i-1;
-		time += interarrival[x]; //in ascending order
-		cout <<"T: " <<time << endl;
+                if(c1){ 
+			while(1){
+				double rc = drand48();
+				int t_cpu = -log(rc) / lamda;
+				if(t_cpu < limit){
+					cpu_burst.push_back(t_cpu+1);
+					break;
+				}
+			}
+
+		}
+
+		if(c2){
+			while(1){
+				double ri = drand48();
+				int t_io = -log(ri) / lamda;
+				if(t_io < limit){
+					io_time.push_back(t_io+1);
+					break;
+				}
+			}
+		}
+
+		if(cpu_burst.size() == num_of_burst){c1 = false;}
+		if(io_time.size() == (num_of_burst - 1)){c2 = false;}
+
+		//cout << "C: " << cpu_burst.size() << "I: " << io_time.size() << endl;
+	}
+
+	for(int i=0; i<cpu_burst.size(); i++){
+
+		int time = cpu_burst[i] + interarrival[i];
 		interarrival.push_back(time);
 	}
+
 
 }
 
@@ -143,3 +159,14 @@ bool Process::IsArrive(int time){
 
 }
 
+void Process::output(){
+
+	cout << "Process " << name << "[NEW] (arrival time "<< arrive_time <<" ms) "<< cpu_burst.size()  <<" CPU bursts" << endl;
+	for(int i=0; i<cpu_burst.size()-1; i++){
+                    	
+		cout << "--> CPU burst "<< cpu_burst[i] << " ms";
+		cout << "--> I/O burst " << io_time[i] << " ms" << endl;
+	}
+	cout << "--> CPU burst " << cpu_burst[cpu_burst.size()-1] << " ms " <<endl;
+
+}

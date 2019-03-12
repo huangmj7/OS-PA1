@@ -37,6 +37,7 @@ class Process{
 		bool IsProcessFinished() const; //true if processfinished, false else
 		bool IsBurstFinished(); //true if current cpu burst/io burst finished, false else. It will update the cpu remain and io remain and STATES until the function is finished.
 		bool IsArrive(int time); //true if a process/burst arrive, false else
+		void output(); //print all results for debugging
 
 	private:
 		void time_generation(float limit, float lamda);
