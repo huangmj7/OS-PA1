@@ -25,18 +25,26 @@ class Process{
 		int cpu_remain;
 		int io_remain;
 		
-		vector<int>::iterator cpu_ptr; //indicate which cpu burst the process currently in 
-		vector<int>::iterator io_ptr; //indicate which io burst the process currently in 
+		int cpu_ptr; //indicate which cpu burst the process currently in 
+		int io_ptr; //indicate which io burst the process currently in
+
+	        bool finished;	
 
                 /*Constructor*/
 		Process(); //default constructor for map function 
 		Process(char Name,float lamda,float limit); //seed for generating all these time and place
 		Process(const Process &p); //copy
 
+		/*Mutator*/
+		int update(int state); //update the remain time of burst, 1 or 2 will update cpu_remain and set state to 3
+		                       //3 will update io_remain and set state 1
+				       //return -1 if fail, else return the new state of process
+
 		/*Observer*/
 		bool IsProcessFinished() const; //true if processfinished, false else
-		bool IsBurstFinished(); //true if current cpu burst/io burst finished, false else. It will update the cpu remain and io remain and STATES until the function is finished.
-		bool IsArrive(int time); //true if a process/burst arrive, false else
+		bool IsCPUFinished() const;//true if state is 1 or 2 and cpu remain == 0, false if the state is 3 or cpu_remain != 0
+		bool IsIOFinished() const;// true if state is 3 and io_remain == 0; false else 
+		bool IsArrive(int time) const;//true if a process/burst arrive, false else
 		void output(); //print all results for debugging
 
 	private:

@@ -15,9 +15,10 @@ Process::Process(){
         cpu_remain = cpu_burst[0];
         io_remain = io_time[0];
 
-        cpu_ptr = cpu_burst.begin();
-        io_ptr = cpu_burst.begin();
+        cpu_ptr = 0;
+        io_ptr = 0;
         preemptive = 0;
+	finished = false;
 
 	
 }
@@ -33,9 +34,10 @@ Process::Process(char Name,float lamda,float limit){
         cpu_remain = cpu_burst[0];
         io_remain = io_time[0];
 
-	cpu_ptr = cpu_burst.begin();
-	io_ptr = cpu_burst.begin();
+	cpu_ptr = 0;
+	io_ptr = 0;
         preemptive = 0;
+	finished = true;
 
 }
 
@@ -58,38 +60,44 @@ Process::Process(const Process &p){
 	io_ptr = p.io_ptr;
 
         preemptive = p.preemptive;
+	finished = p.finished;
 
 }
 
-bool Process::IsBurstFinished(){
-	
-	if(io_ptr == io_time.end() || cpu_ptr == cpu_burst.end()){return false;}
-	bool rv = false;
-	/*io*/
-	if(io_remain == 0){
-		
+
+bool Process::IsCPUFinished() const {return ((state == 1 || state == 2) && cpu_remain == 0);} //true if state is 1 or 2 and cpu remain == 0, false if the state is 3 or cpu_remain != 0
+bool Process::IsIOFinished() const {return (io_remain == 0 && state == 3);} // true if state is 3 and io_remain == 0; false else 
+
+int Process::update(int s){
+
+	if(s == 3){
+
+		if(io_remain != 0 || io_ptr == io_time.size()){return -1;} //only update when io_remain == 0
+
+		state = 1; //ready
 		io_ptr ++;
-		io_remain = *io_ptr;
-		state = 1;
-		rv = true;
-			
-	
-	}
-        
-	/*cpu*/
-	if(cpu_remain == 0){
+		io_remain = io_time[io_ptr];
+		return 1;
+	} //update io
 
+	if(s == 1 || s == 2){
+
+		if(cpu_remain != 0 || cpu_ptr == cpu_burst.size()){return -1;} //only update when cpu_remain == 0
+
+		state = 3;
 		cpu_ptr ++;
-		cpu_remain = *cpu_ptr;
-		if(cpu_ptr != cpu_burst.end()){state = 3;} // enter io unless it is the last burst
-		rv = true;
+		cpu_remain = cpu_burst[cpu_ptr];
+		return 3;
 	
 	}
-
-	return rv;
 }
                 
-bool Process::IsProcessFinished() const{return (io_ptr == io_time.end() && cpu_ptr == cpu_burst.end());}
+bool Process::IsProcessFinished() const{
+	//cout << *io_ptr << endl;
+	//cout << *cpu_ptr << endl;
+	
+	return (io_ptr == io_time.size() && cpu_ptr == cpu_burst.size());
+}
 
 void Process::time_generation(float limit,float lamda){
 
@@ -150,12 +158,17 @@ void Process::time_generation(float limit,float lamda){
 
 
      
-bool Process::IsArrive(int time){
+bool Process::IsArrive(int time) const{
 
+	
+	/*
 	for(int i=0; i< interarrival.size(); i++){
 		if(interarrival[i] == time){return true;}
 	}
 	return false;
+	*/
+
+	return (time==arrive_time);
 
 }
 
