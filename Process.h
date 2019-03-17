@@ -12,6 +12,7 @@ class Process{
 		char name;
 		int state;      //1:read; 2:running: 3:block
 		int number_of_burst;   //range from [1,100]
+		int tau;
 		vector<int> io_time;   //number of io time is one less than cpu as process always end with cpu burst
 		vector<int> cpu_burst; //number of cpu burst time arrange from [1,100], order from first arrive to the last arrive
 		vector<int> interarrival; //the arrival time of each burst, some order as the cpu burst

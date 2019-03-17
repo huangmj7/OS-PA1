@@ -10,6 +10,10 @@ Process::Process(){
 
 	name = ' ';
 	state = 0;
+
+	number_of_burst = 0;   //range from [1,100]
+        tau  = 0;
+
 	wait_time = 0;
         turnaround_time = 0;
         cpu_remain = cpu_burst[0];
@@ -27,7 +31,10 @@ Process::Process(char Name,float lamda,float limit){
 
 	name = Name;
         state = 1;      //1:ready; 2:running: 3:block
+        tau = 1/lamda;
+
 	time_generation(limit,lamda);
+	number_of_burst = cpu_burst.size();
 
 	wait_time = 0;
         turnaround_time = 0;
@@ -49,6 +56,9 @@ Process::Process(const Process &p){
 	io_time = p.io_time;
         cpu_burst = p.cpu_burst;
 	interarrival = p.interarrival;
+	number_of_burst = p.number_of_burst;   //range from [1,100]
+        tau = p.tau;
+	arrive_time = p.arrive_time;
 
         wait_time = p.wait_time;
         turnaround_time = p.turnaround_time;
