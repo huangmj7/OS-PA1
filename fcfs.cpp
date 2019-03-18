@@ -62,85 +62,75 @@ map<char,Process> Upload(vector<Process> p){
 	return total;	
 }
 
-
-
-int fcfs(int Time,bool &context_switch,float alpha,char &current,vector<char> &ready_queue,vector<char> &io_queue,map<char,Process> &total){
+void arrive_and_io(int Time,vector<char> &ready_queue,map<char,Process> &total){
 	
-	//arrive&io
+
 	for(map<char,Process>::iterator i=total.begin(); i!=total.end();++i){
 		
 		if(i->second.state == 3){
 			i->second.io_remain--;
 			if(i->second.IsIOFinished()){
 				i->second.update(3);
-				//i->second.state = 2;
 				ready_queue.push_back(i->second.name);
-				cout<<"Time "<<Time <<"ms: " << "Process "<<i->first <<" completed I/O; added to ready queue ";
+				cout<<"time "<<Time <<"ms: " << "Process "<<i->first <<" completed I/O; added to ready queue ";
 				print_queue(ready_queue);
 			}
+
 
 		}
 
 		if(i->second.IsArrive(Time)){
 			ready_queue.push_back(i->second.name);
-			cout <<"Time "<< Time <<"ms: "<<"Process " << i->second.name <<" arrived; added to ready queue" << endl;
+			cout <<"time "<< Time <<"ms: "<<"Process " << i->second.name <<" arrived; added to ready queue" << endl;
 		}
 
-
+		if(i->second.state == 1){i->second.wait_time ++;}
 	}
 
+}
 
-	if(ready_queue.size() == 0 && current == '-'){return 1;}
-
-	//preemetive --> won't happed
-	//for(map<char,Process>::iterator itr = total.begin(); itr!=total.end(); itr++){if(itr->second.state == 1){itr->second.wait_time++;}}
+char part_fcfs(int Time,bool &context_switched,bool &leave,int tcs,int &tx,char &last,char &current,vector<char> &ready_queue, map<char,Process> &total){
 	
-	//wait
-        for(int i=0; i<ready_queue.size(); i++){
-		char t = ready_queue[i];
-		total[t].wait_time++;
+        
+	if(current == '-' && ready_queue.size() == 0){return '0';} //finished simluation
+	
+	if(tx != 0){
+
+		//cout << Time << endl;
+		total[last].turnaround_time++;
+		tx --;
+		return last;
+
 	}
 
-	//context switch
-	//leave
-	/*
-	if(context_switch && current == '-'){
-
-		switching --;
-		total[last].turnaround_time --;
-		if(switching == 0){
-			switching = tcs/2;
-		}//for next enter
-
-		return 2;
-	}
-	*/
-	if(current == '-'){
-		//context_switch_enter = (true && (enter!=0));
+	if(current == '-'){	
+                
+		//cout << "enter" << endl;
+		int size = ready_queue.size();
 		current = ready_queue[0];
 		total[current].state = 2;
 		ready_queue.erase(ready_queue.begin());
-		if(!context_switch){
-			cout << "time "<< Time <<"ms: Process "<<current<<" started using the CPU for "<< total[current].cpu_remain<<"ms "<< "burst ";
-			print_queue(ready_queue);
+		if(leave){
+			context_switched = true;
+			last = current;
+			tx = tcs;
+			tx --;
+			return current; //switching...
 		}
-		/*
-		else{
-			switching --;
-			total[current].trunaround_time++;
-			if(switching == 0){
-				switching = tcs/2;
-				context_switch = false;
-			}
-			return 2;
-			
-		}
-		*/
+		else{context_switched = true;}
 	}
-
-	//cpu
+		
+        //finished
+	if(tx == 0 && context_switched){
+		context_switched = false;
+		leave = false;
+		cout << "time "<< Time <<"ms: Process "<<current<<" started using the CPU for "<< total[current].cpu_remain<<"ms "<< "burst ";
+		print_queue(ready_queue);
+	}
+			
+	//cpu run 
 	if(total[current].state == 2){
-
+		
 		total[current].cpu_remain --;
 		total[current].turnaround_time++;
 		char temp = current;
@@ -148,30 +138,75 @@ int fcfs(int Time,bool &context_switch,float alpha,char &current,vector<char> &r
 		if(total[current].IsCPUFinished()){
 
 			int t = total[current].cpu_ptr;
+			context_switched = true;
 			total[current].update(2);
+			int o = total[current].io_remain;
 			int y = total[current].cpu_burst.size();
-			if(y-t != 1){
+			if(y-t != 0){
 
 				cout << "time "<<Time << "ms: " <<"Process "<< total[current].name<< " completed a CPU burst; "<< (y-t) <<" bursts to go ";
+				print_queue(ready_queue);
+				cout << "time "<<Time<<"ms: Process " <<total[current].name<<" switching out of CPU; will block on I/O until time "<< (Time + o)  <<"ms ";
 			       	print_queue(ready_queue);
 			}
+
+			if(total[temp].IsProcessFinished()){
+				
+				total[temp].state = 0; //finished
+				cout <<"Time "<<Time << "ms: " <<"Process "<<temp<< " terminated ";
+				print_queue(ready_queue);
+			}
+			else{
+				
+				//cout << "leave" << endl;
+				leave = true;
+				tx = tcs;
+				tx --;
+				context_switched = true;
+				last = temp;
+			}
+
 			current = '-';	
 		}
 
-		if(total[temp].IsProcessFinished()){
-			
-			total[temp].state = 0; //finished
-			cout <<"Time "<<Time << "ms: " <<"Process "<<temp<< " terminated ";
- 			print_queue(ready_queue);
-		}
 	}
-        //print_queue(ready_queue);
-	return 0;
-	
+	 
+	return '-';
+        
 }
 
+void output(string algorithm,map<char,Process> total,int tcs,int tncs,int np){
 
+	float ave_turnaround = 0.0;
+	float ave_wait = 0.0;
+	float ave_cpu_burst = 0.0;
+	int total_preemetive = 0;
+	int total_context_switch = 0;
 
+	for(map<char,Process>::iterator itr=total.begin(); itr!= total.end(); ++itr){
+
+		//cout << itr->first << " is " << itr->second.state << endl;
+		ave_turnaround += itr->second.turnaround_time;
+		ave_wait += itr -> second.wait_time;
+		total_preemetive += itr->second.preemptive; 
+		for(int j=0;j<itr->second.cpu_burst.size();j++){ave_cpu_burst += itr->second.cpu_burst[j];}
+		ave_cpu_burst /= itr->second.cpu_burst.size();
+
+	}
+
+	ave_turnaround /= np;
+	ave_wait /= np;
+	ave_cpu_burst /= np;
+	total_context_switch = tncs/tcs;
+
+	cout <<"Algorithm "<< algorithm << endl;
+	cout << "-- average CPU burst time: "<<ave_cpu_burst<<" ms" << endl;
+	cout << "-- average wait time: "<<ave_wait<<"  ms" << endl;
+	cout << "-- average turnaround time: "<<ave_turnaround<<" ms" << endl;
+	cout << "-- total number of context switches: "<<total_context_switch << endl; 
+	cout << "-- total number of preemptions: "<<total_preemetive << endl;
+
+}
 
 
 
@@ -212,27 +247,39 @@ int main(int argc, char** argv){
 	//cout << P.size() << endl;
 	//for(map<char,Process>::iterator itr = total.begin(); itr!=total.end();itr++){cout << itr->first << " == " << itr->second.arrive_time << endl;}
 
-	//cpu and io
+        //cpu and io
 	vector<char> ready_queue,io_queue;
 	//for(map<char,Process>::iterator itr=total.begin();itr!=total.end(); ++itr){ready_queue.push_back(itr->first);}
 
 	//time
+	cout << context_switch_time << endl;
 	long long int Time = -1;
-	int t_cs_e = context_switch_time/2;
-	int t_cs_l = context_switch_time/2;
+	int t_cs = context_switch_time/2;
+	int tx = 0;
+	int ntc = 0;
+	char last = '-';
 	bool context_switch = false;
 	char current = '-';
-	print_queue(ready_queue);
-	
+	char result = '-';
+	bool leave = false;
+	//print_queue(ready_queue);
+	vector<char> add_;
 	
 	while(Time < 400000){
                 Time++;
+		
+		arrive_and_io(Time,ready_queue,total);
+		result = part_fcfs(Time,context_switch,leave,t_cs,tx,last,current,ready_queue,total);
+		if(leave){ntc ++;}
+		//cout << ntc << endl;
+		//if(tx != 0){cout<< Time << "  " << tx << endl;}
+		//cout << "xed" << endl;
 		//cout << Time << current << endl;
-		fcfs(Time,context_switch,alpha,current,ready_queue,io_queue,total);
+		//fcfs(Time,context_switch,alpha,current,ready_queue,io_queue,total);
 		//cout<<Time  << " `B eak" << endl;
 	}
-
-	//Output(total);
+        output("FCFS",total,context_switch_time,ntc,number_of_process);
+	//output(total);
 
 
 
