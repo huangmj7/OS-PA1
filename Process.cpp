@@ -82,10 +82,11 @@ int Process::update(int s){
 
 	if(s == 3){
 
-		if(io_remain != 0 || io_ptr == io_time.size()-1){return -1;} //only update when io_remain == 0
+		if(io_remain != 0 || io_ptr == io_time.size()){return -1;} //only update when io_remain == 0
 
 		state = 1; //ready
 		io_ptr ++;
+		if(io_ptr == io_time.size()){return -2;}
 		//cout <<io_time.size() << " < " <<  io_ptr << endl;
 		io_remain = io_time[io_ptr];
 		return 1;
@@ -93,10 +94,11 @@ int Process::update(int s){
 
 	if(s == 1 || s == 2){
 
-		if(cpu_remain != 0 || cpu_ptr == cpu_burst.size()-1){return -1;} //only update when cpu_remain == 0
+		if(cpu_remain != 0 || cpu_ptr == cpu_burst.size()){return -1;} //only update when cpu_remain == 0
 
 		state = 3;
 		cpu_ptr ++;
+		if(cpu_ptr == cpu_burst.size()){return -2;}
 		cpu_remain = cpu_burst[cpu_ptr];
 		return 3;
 	
@@ -105,9 +107,9 @@ int Process::update(int s){
                 
 bool Process::IsProcessFinished() const{
 	//cout << *io_ptr << endl;
-	//cout << *cpu_ptr << endl;
-	
-	return (io_ptr == io_time.size()-1 && cpu_ptr == cpu_burst.size()-1);
+	//cout << io_ptr << endl;
+        //cout << io_remain << endl;	
+	return (io_ptr == io_time.size() && cpu_ptr == cpu_burst.size());
 }
 
 void Process::time_generation(float limit,float lamda){
