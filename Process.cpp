@@ -109,7 +109,7 @@ bool Process::IsProcessFinished() const{
 	//cout << *io_ptr << endl;
 	//cout << io_ptr << endl;
         //cout << io_remain << endl;	
-	return (io_ptr == io_time.size() && cpu_ptr == cpu_burst.size());
+	return (io_ptr == (int)io_time.size() && cpu_ptr == (int)cpu_burst.size());
 }
 
 void Process::time_generation(float limit,float lamda){
