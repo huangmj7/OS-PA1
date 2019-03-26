@@ -23,8 +23,11 @@ vector<char> compare_tau(vector<char>ready_queue,map<char,Process> total);
 char part_sjf(int Time,bool &context_switched,bool &leave,int tcs,int &tx,char &last,char &current,float alpha,vector<char> &ready_queue, map<char,Process> &total);
 char part_fcfs(int Time,bool &context_switched,bool &leave,int tcs,int &tx,char &last,char &current,vector<char> &ready_queue, map<char,Process> &total);
 void arrive_and_io_fcfs(int Time,vector<char> &ready_queue,map<char,Process> &total,int mode);
+vector<Process> sort_update_ready(vector<Process> p, vector<Process> ready);
+vector<Process> update_ready(vector<Process> p, vector<Process> ready);
 int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int &tcs_check);
-void rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int time_slice, int& track_time_slice);
+int rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int time_slice, int& track_time_slice, int order, int &tcs_check);
+
 /*---------generater------processes----------------------------------------------------*/
 
 vector<Process> generate(int seed, int np, float limit, float lamda){
@@ -435,7 +438,56 @@ void fcfs(map<char,Process> &total,vector<char> &ready_queue,int context_switch_
 	output("FCFS",total,context_switch_time,ntc,number_of_process);
 
 }
-
+vector<Process> sort_update_ready(vector<Process> p, vector<Process> ready){
+	for (int i = 0; i < ready.size(); i++){
+		for (int j = 0; j < p.size(); j++){
+			if (p[j].name == ready[i].name){
+				//ready[i].burst_num = p[j].burst_num;
+				//ready[i].tau = p[j].tau;
+				//ready[i].cpu_remain = p[j].cpu_remain;
+				//ready[i].io_remain = p[j].io_remain;
+				//ready[i].state = p[j].state;
+				ready[i] = p[j];
+				//ready[i].burst_num = p[j].burst_num;
+			}
+		}
+	}
+ 
+	//sort(ready.begin(),ready.end(),Sort); 
+	for(int i = 1;i < ready.size();++i){
+        for(int j = i;j > 0;--j){
+            if(ready[j].tau < ready[j - 1].tau){
+                Process temp = ready[j];
+                ready[j] = ready[j-1];
+                ready[j-1] = temp;
+            }
+			else if (ready[j].tau == ready[j - 1].tau){
+				if (ready[j].name < ready[j - 1].name){
+					Process temp = ready[j];
+                	ready[j] = ready[j-1];
+                	ready[j-1] = temp;
+				}
+			}
+        }
+    }
+	return ready;
+}
+vector<Process> update_ready(vector<Process> p, vector<Process> ready){
+	for (int i = 0; i < ready.size(); i++){
+		for (int j = 0; j < p.size(); j++){
+			if (p[j].name == ready[i].name){
+				//ready[i].burst_num = p[j].burst_num;
+				//ready[i].tau = p[j].tau;
+				//ready[i].cpu_remain = p[j].cpu_remain;
+				//ready[i].io_remain = p[j].io_remain;
+				//ready[i].state = p[j].state;
+				ready[i] = p[j];
+				//ready[i].burst_num = p[j].burst_num;
+			}
+		}
+	}
+	return ready;
+}
 void sjf(map<char,Process> &total, vector<char> &ready_queue, int context_switch_time, int number_of_process, float alpha){
 
 	long long int Time = -1;
@@ -474,8 +526,19 @@ void sjf(map<char,Process> &total, vector<char> &ready_queue, int context_switch
 }
 /*---------------------------------------------------------------------------------------------------------*/
 int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int &tcs_check) {
+	ready_queue = sort_update_ready(p,ready_queue);
 	/*Inistialization*/
 	if (Time == 0) {
+		for (int y = 0; y < p.size(); y++){
+			cout << "Process " << p[y].name << "[NEW] (arrival time " << p[y].arrive_time << "ms) " << p[y].number_of_burst;
+			if (p[y].number_of_burst != 1){
+				cout << " CPU bursts" << endl;
+			} 
+			else {
+				cout << " CPU burst" << endl;
+			}
+		}
+		cout << "time 0ms: Simulator started for SRT [Q <empty>]" << endl;
 		for (int i = 0; i < p.size(); i++) {
 			p[i].state = 0;
 			p[i].burst_num = 0;
@@ -483,11 +546,11 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 			p[i].io_remain = 0;
 			p[i].wait_time = 0;
 			p[i].preemptive = 0;
+			p[i].context_switch = 0;
 		}
 	}
-
-	/*Process arrival*/
 	int mark = 0;
+	/*Process arrival*/
 	for (int i = 0; i < p.size(); i++) {
 		if (p[i].arrive_time == Time) {
 			mark = 1;
@@ -495,6 +558,7 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 			p[i].cpu_remain = 0;
 			p[i].io_remain = 0;
 			ready_queue.push_back(p[i]);
+			ready_queue = sort_update_ready(p,ready_queue);
 			cout << "time " << Time << "ms: Process " << p[i].name;
 			cout << " (tau " << p[i].tau << "ms) arrived: added to ready queue [Q";
 			/*Print ready queue*/
@@ -505,9 +569,10 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 				cout << " <empty>";
 			}
 			cout << "]" << endl;
+			tcs_check = -1;
 		}
 	}
-
+	/*If io completes during context switch*/
     if (running_p.state == 4){
         tcs_check++;        
         if (tcs_check != tcs / 2 + 1){
@@ -515,133 +580,121 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
                 if (p[i].state == 1 || p[i].state == 4){
                     p[i].wait_time++;
                 }
-                else if (p[i].state == 3) {
-                    p[i].io_remain--;
-                    if (p[i].io_remain == 0) {
-                        vector<Process> temp;
-                        for (int j = 0; j < p.size(); j++) {
-                            if (p[j].state == 1 || p[j].state == 2 || p[j].state == 3) {
-                                temp.push_back(p[j]);
-                            }
-                        }
-                        int shortest = 0;
-                        for (int j = 1; j < temp.size(); j++) {
-                            if (temp[shortest].tau > temp[j].tau) {
-                                shortest = j;
-                            }
-                        }
-                        if (temp[shortest].name == running_p.name) {
-                            cout << "time " << Time << "ms: Process " << temp[shortest].name << " (tau " << temp[shortest].tau << "ms) completed I/O; added to ready queue";
-                            cout << " [Q";
-                            ready_queue.push_back(p[i]);
-                            for (int j = 0; j < ready_queue.size(); j++) {
-                                cout << " " << ready_queue[j].name;
-                            }
-                            if (ready_queue.size() == 0) {
-                                cout << " <empty>";
-                            }
-                            cout << "]" << endl;
-                            p[i].state = 1;
-                        }
-                        else if (temp[shortest].name == p[i].name) {
-                            cout << temp[shortest].name << endl;
-                            cout << "time " << Time << "ms: Process " << temp[shortest].name << " (tau " << temp[shortest].tau << "ms) completed I/O and will preempt ";
-                            cout << running_p.name;
-                            cout << " [Q";
-                            ready_queue.push_back(p[i]);
-                            for (int j = 0; j < ready_queue.size(); j++) {
-                                cout << " " << ready_queue[j].name;
-                            }
-                            if (ready_queue.size() == 0) {
-                                cout << " <empty>";
-                            }
-                            cout << "]" << endl;
-                            for (int j = 0; j < p.size(); j++) {
-                                if (running_p.name == p[j].name) {
-                                    p[j].preemptive++;
-                                    p[j].state = 4;
-                                    running_p.state = 4;
-                                }
-                            }
-                            p[i].state = 1;
-                        }
-                        cpu_occupy = 0;
-                    }
-                }
+               	else if (p[i].state == 3) {
+					p[i].io_remain--;
+					//cout << p[i].name << ":" <<p[i].io_remain << endl;
+					if (p[i].io_remain == 0) {
+						vector<Process> temp;
+						for (int j = 0; j < p.size(); j++) {
+							if (p[j].state == 1 || p[j].state == 2 || p[j].state == 3) {
+								temp.push_back(p[j]);
+							}
+						}
+						temp = sort_update_ready(p,temp);
+
+						if (temp[0].name == p[i].name && running_p.state != -1 && running_p.name != p[i].name) {
+							cout << "time " << Time << "ms: Process " << temp[0].name << " (tau " << temp[0].tau << "ms) completed I/O and will preempt ";
+							cout << running_p.name;
+							cout << " [Q";
+							ready_queue.push_back(p[i]);
+							ready_queue = sort_update_ready(p,ready_queue);
+							for (int j = 0; j < ready_queue.size(); j++) {
+								cout << " " << ready_queue[j].name;
+							}
+							if (ready_queue.size() == 0) {
+								cout << " <empty>";
+							}
+							cout << "]" << endl;
+							for (int j = 0; j < p.size(); j++) {
+								if (running_p.name == p[j].name) {
+									p[j].preemptive++;
+									p[j].state = 1;
+									p[j].context_switch++;
+									running_p.state = 4;
+								}
+							}
+							p[i].state = 1;
+							cpu_occupy = 0;
+							ready_queue = sort_update_ready(p,ready_queue);
+						}
+						/*
+						Special situation: when two i/o complete within tcs/2, the output should be different
+						else if (temp[0].name != running_p.name && )
+						*/
+						else /*if (temp[0].name == running_p.name || running_p.state == 3 || running_p.state == -1) */{
+							cout << "time " << Time << "ms: Process " << p[i].name << " (tau " << p[i].tau << "ms) completed I/O; added to ready queue";
+							cout << " [Q";
+							ready_queue.push_back(p[i]);
+							ready_queue = sort_update_ready(p,ready_queue);
+							for (int j = 0; j < ready_queue.size(); j++) {
+								cout << " " << ready_queue[j].name;
+							}
+							if (ready_queue.size() == 0) {
+								cout << " <empty>";
+							}
+							cout << "]" << endl;
+							p[i].state = 1;
+							//cpu_occupy = 1;
+							ready_queue = sort_update_ready(p,ready_queue);
+						}
+					}
+				}  
             }
-            return 1;
-        }
-        else {
-            tcs_check = 0;
-            running_p.state = 1;
-            for (int i = 0; i < p.size(); i++){
-                if (p[i].state == running_p.name){
-                    p[i].state = 1;
-                }
-            }
-            ready_queue.push_back(running_p);
-        }
-    }
-	/**/
+			return 1;
+		}
+		else {
+			tcs_check = 0;
+			running_p.state = 1;
+			for (int i = 0; i < p.size(); i++){
+				if (p[i].state == running_p.name){
+					p[i].state = 1;		
+				}
+			}
+			ready_queue.push_back(running_p);
+		}
+	}
+	/*Add to cpu*/
 	if (cpu_occupy == 0 && ready_queue.size() != 0 && running_p.state != 4) {
 		int shortest = 0;
-		for (int i = 1; i < ready_queue.size(); i++) {
-			if (ready_queue[shortest].tau > ready_queue[i].tau) {
-				shortest = i;
-			}
-			else if (ready_queue[shortest].tau == ready_queue[i].tau) {
-				if (ready_queue[i].name < ready_queue[shortest].name) {
-					shortest = i;
-				}
-			}		}
-		for (int i = 0; i < p.size(); i++) {
-			if (ready_queue[shortest].name == p[i].name) {
-				tcs_check++;
-			}
-		}
+		ready_queue = sort_update_ready(p,ready_queue);
+		tcs_check++;
 		if (tcs_check == tcs / 2) {
 			tcs_check = 0;
-			for (int i = 0; i < p.size(); i++) {
-                
-				if (p[i].name == ready_queue[shortest].name) {
-					if (p[i].cpu_remain != ready_queue[shortest].cpu_burst[ready_queue[shortest].burst_num] && p[i].cpu_remain > 0) {
-						cout << "time " << Time << "ms: Process " << ready_queue[shortest].name << " started using the CPU with ";
-						for (int i = 0; i < p.size(); i++) {
-							if (p[i].name == ready_queue[shortest].name) {
-								ready_queue[shortest].burst_num = p[i].burst_num;
-							}
-						}
-						cout << p[i].cpu_remain << "ms remaining [Q";
-					}
-					else {
-                        //cout << running_p.state << " " << running_p.name << endl;
-						cout << "time " << Time << "ms: Process " << ready_queue[shortest].name << " started using the CPU for ";
-						for (int i = 0; i < p.size(); i++) {
-							if (p[i].name == ready_queue[shortest].name) {
-								ready_queue[shortest].burst_num = p[i].burst_num;
-							}
-						}
-						cout << ready_queue[shortest].cpu_burst[ready_queue[shortest].burst_num] << "ms burst [Q";
-					}
+			for (int l = 0; l < p.size(); l++){
+				if (p[l].name==ready_queue[0].name){
+					ready_queue[0].burst_num = p[l].burst_num;
+				}
+			}
+			if (ready_queue[0].cpu_burst[ready_queue[0].burst_num] != ready_queue[0].cpu_remain && ready_queue[0].cpu_remain > 0){
+				cout << "time " << Time << "ms: Process " << ready_queue[0].name << " started using the CPU with ";
+				cout << ready_queue[0].cpu_remain << "ms remaining [Q";		
+				
+			}
+			else {
+					
+				cout << "time " << Time << "ms: Process " << ready_queue[shortest].name << " started using the CPU for ";
+				cout << ready_queue[0].cpu_burst[ready_queue[0].burst_num] << "ms burst [Q";
+			}
+			
+			for (int i = 0; i < p.size(); i++){
+				if (p[i].name == ready_queue[0].name){
 					p[i].state = 2;
 					running_p = p[i];
-				}
-			}
-			if (running_p.cpu_remain == 0) {
-				running_p.cpu_remain = ready_queue[shortest].cpu_burst[ready_queue[shortest].burst_num];				
-                for (int i = 0; i < p.size(); i++) {
-					if (running_p.name == p[i].name) {
-						p[i].cpu_remain = ready_queue[shortest].cpu_burst[ready_queue[shortest].burst_num];
+					if (running_p.cpu_remain == 0){
+						running_p.cpu_remain = ready_queue[0].cpu_burst[ready_queue[0].burst_num];
+						p[i].cpu_remain = running_p.cpu_remain;
 					}
 				}
 			}
-			ready_queue.erase(ready_queue.begin() + shortest, ready_queue.begin() + shortest + 1);
+			ready_queue.erase(ready_queue.begin(), ready_queue.begin()+1);
+			ready_queue = sort_update_ready(p,ready_queue);
 			for (int j = 0; j < ready_queue.size(); j++) {
 				cout << " " << ready_queue[j].name;
 			}
 			if (ready_queue.size() == 0) {
 				cout << " <empty>";
-			}				cout << "]" << endl;
+			}	
+			cout << "]" << endl;
 			cpu_occupy = 1;
 		}
 	}
@@ -655,6 +708,7 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 			if (p[i].cpu_remain == 0) {
 				if (p[i].number_of_burst == 1) {
 					cout << "time " << Time << "ms: Process " << p[i].name << " terminated [Q";
+					ready_queue = sort_update_ready(p,ready_queue);
 					for (int j = 0; j < ready_queue.size(); j++) {
 						cout << " " << ready_queue[j].name;
 					}
@@ -664,6 +718,8 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 					cout << "]" << endl;
 					cpu_occupy = 0;
 					p[i].state = -1;
+					p[i].context_switch++;
+					running_p.state = -1;
 					p[i].number_of_burst = 0;					
 					int count_end = 0;
 					for (int j = 0; j < p.size(); j++) {
@@ -672,13 +728,17 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 						}
 					}
 					if (count_end == p.size()) {
+						Time+= tcs/2;
+						cout << "time " << Time << "ms: Simulator ended for RR [Q <empty>]" << endl;
 						return 0;
 					}
 				}
 				else if (p[i].number_of_burst > 1) {
 					cout << "time " << Time << "ms: Process " << p[i].name << " completed a CPU burst: ";
 					p[i].number_of_burst--;
+					p[i].context_switch++;
 					cout << p[i].number_of_burst << " bursts to go [Q";
+					ready_queue = sort_update_ready(p,ready_queue);
 					for (int j = 0; j < ready_queue.size(); j++) {
 						cout << " " << ready_queue[j].name;
 					}
@@ -686,8 +746,9 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 						cout << " <empty>";
 					}
 					cout << "]" << endl;
-					p[i].tau = (1 - alpha)*p[i].tau + alpha * p[i].cpu_burst[p[i].burst_num];
+					p[i].tau = (1 - alpha)*p[i].tau + alpha * p[i].cpu_burst[p[i].burst_num];	
 					cout << "time " << Time << "ms: Recalculated tau = " << p[i].tau << "ms for process " << p[i].name << " [Q";
+					ready_queue = sort_update_ready(p,ready_queue);
 					for (int j = 0; j < ready_queue.size(); j++) {
 						cout << " " << ready_queue[j].name;
 					}
@@ -704,15 +765,20 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 						cout << " <empty>";
 					}
 					cout << "]" << endl;
+					
 					p[i].io_remain = p[i].io_time[p[i].burst_num];
 					p[i].burst_num++;
 					p[i].state = 3;
+					running_p.state = 3;
+					//p[i].
 					cpu_occupy = 0;
+					ready_queue = sort_update_ready(p,ready_queue);
 				}
 			}
 		}
 		else if (p[i].state == 3) {
 			p[i].io_remain--;
+			//cout << p[i].name << ":" <<p[i].io_remain << endl;
 			if (p[i].io_remain == 0) {
 				vector<Process> temp;
 				for (int j = 0; j < p.size(); j++) {
@@ -720,31 +786,14 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 						temp.push_back(p[j]);
 					}
 				}
-				int shortest = 0;
-				for (int j = 1; j < temp.size(); j++) {
-					if (temp[shortest].tau > temp[j].tau) {
-						shortest = j;
-					}
-				}
-				if (temp[shortest].name == running_p.name) {
-					cout << "time " << Time << "ms: Process " << p[i].name << " (tau " << p[i].tau << "ms) completed I/O; added to ready queue";
-					cout << " [Q";
-					ready_queue.push_back(p[i]);
-					for (int j = 0; j < ready_queue.size(); j++) {
-						cout << " " << ready_queue[j].name;
-					}
-					if (ready_queue.size() == 0) {
-						cout << " <empty>";
-					}
-					cout << "]" << endl;
-					p[i].state = 1;
-                    cpu_occupy = 1;
-				}
-				else if (temp[shortest].name == p[i].name) {
-					cout << "time " << Time << "ms: Process " << temp[shortest].name << " (tau " << temp[shortest].tau << "ms) completed I/O and will preempt ";
+				temp = sort_update_ready(p,temp);
+
+				if (temp[0].name == p[i].name && running_p.state != -1 && running_p.name != p[i].name) {
+					cout << "time " << Time << "ms: Process " << temp[0].name << " (tau " << temp[0].tau << "ms) completed I/O and will preempt ";
 					cout << running_p.name;
 					cout << " [Q";
 					ready_queue.push_back(p[i]);
+					ready_queue = sort_update_ready(p,ready_queue);
 					for (int j = 0; j < ready_queue.size(); j++) {
 						cout << " " << ready_queue[j].name;
 					}
@@ -755,14 +804,31 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 					for (int j = 0; j < p.size(); j++) {
 						if (running_p.name == p[j].name) {
 							p[j].preemptive++;
-							p[j].state = 4;
+							p[j].state = 1;
+							p[j].context_switch++;
                             running_p.state = 4;
 						}
 					}
                     p[i].state = 1;
                     cpu_occupy = 0;
+					ready_queue = sort_update_ready(p,ready_queue);
 				}
-                
+                else /*if (temp[0].name == running_p.name || running_p.state == 3 || running_p.state == -1) */{
+					cout << "time " << Time << "ms: Process " << p[i].name << " (tau " << p[i].tau << "ms) completed I/O; added to ready queue";
+					cout << " [Q";
+					ready_queue.push_back(p[i]);
+					ready_queue = sort_update_ready(p,ready_queue);
+					for (int j = 0; j < ready_queue.size(); j++) {
+						cout << " " << ready_queue[j].name;
+					}
+					if (ready_queue.size() == 0) {
+						cout << " <empty>";
+					}
+					cout << "]" << endl;
+					p[i].state = 1;
+                    //cpu_occupy = 1;
+					ready_queue = sort_update_ready(p,ready_queue);
+				}
 			}
 		}
 		p[i].turnaround_time = Time - p[i].arrive_time;
@@ -772,14 +838,46 @@ int srt(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 
 /*---------------------------------------------------------------------------------------------------------*/
 /*track_time_slice is 0 initially*/
-void rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int time_slice, int& track_time_slice) {
-	/*Check Arrival*/
+int rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int time_slice, int& track_time_slice, int order, int &tcs_check) {
+	ready_queue = sort_update_ready(p,ready_queue);
+	/*Inistialization*/
+	if (Time == 0) {
+		for (int y = 0; y < p.size(); y++){
+			cout << "Process " << p[y].name << "[NEW] (arrival time " << p[y].arrive_time << "ms) " << p[y].number_of_burst;
+			if (p[y].number_of_burst != 1){
+				cout << " CPU bursts" << endl;
+			} 
+			else {
+				cout << " CPU burst" << endl;
+			}
+		}
+		cout << "time 0ms: Simulator started for RR [Q <empty>]" << endl;
+		for (int i = 0; i < p.size(); i++) {
+			p[i].state = 0;
+			p[i].burst_num = 0;
+			p[i].cpu_remain = 0;
+			p[i].io_remain = 0;
+			p[i].wait_time = 0;
+			p[i].preemptive = 0;
+			p[i].context_switch = 0;
+		}
+	}
 	int mark = 0;
+	/*Process arrival*/
 	for (int i = 0; i < p.size(); i++) {
 		if (p[i].arrive_time == Time) {
 			mark = 1;
 			p[i].state = 1;
-			ready_queue.push_back(p[i]);
+			p[i].cpu_remain = 0;
+			p[i].io_remain = 0;
+			if (order == 1){
+				ready_queue.push_back(p[i]);
+				ready_queue = update_ready(p,ready_queue);
+			}
+			else if (order == 0){
+				ready_queue.insert(ready_queue.begin(),p[i]);
+				ready_queue = update_ready(p,ready_queue);
+			}
 			cout << "time " << Time << "ms: Process " << p[i].name;
 			cout << " (tau " << p[i].tau << "ms) arrived: added to ready queue [Q";
 			/*Print ready queue*/
@@ -787,138 +885,17 @@ void rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 				cout << " " << ready_queue[j].name;
 			}
 			if (ready_queue.size() == 0) {
-				cout << "<empty>";
-			}
-			cout << "]" << endl;
-		}
-	}
-
-	/*Add process from ready queue to cpu burst*/
-	if (cpu_occupy == 0 && ready_queue.size() != 0) {
-		if (mark == 0) {
-			Time--;
-		}
-		Time += tcs / 2;
-		cout << "time " << Time << "ms: Process " << ready_queue[0].name << " started using the CPU for ";
-		for (int i = 0; i < p.size(); i++) {
-			if (p[i].name == ready_queue[0].name) {
-				ready_queue[0].burst_num = p[i].burst_num;
-			}
-		}
-
-		cout << ready_queue[0].cpu_burst[ready_queue[0].burst_num] << "ms burst [Q ";
-		ready_queue[0].state = 2;
-		running_p = ready_queue[0];
-		for (int i = 0; i < p.size(); i++) {
-			if (p[i].name == running_p.name) {
-				p[i].state = 2;
-				if (running_p.cpu_remain == 0) {
-					running_p.cpu_remain += ready_queue[0].cpu_burst[ready_queue[0].burst_num];
-					p[i].cpu_remain = ready_queue[0].cpu_burst[ready_queue[0].burst_num];
-				}
-			}
-		}
-
-
-		ready_queue.erase(ready_queue.begin(), ready_queue.begin() + 1);
-		for (int j = 0; j < ready_queue.size(); j++) {
-			cout << " " << ready_queue[j].name;
-		}
-		if (ready_queue.size() == 0) {
-			cout << "<empty>";
-		}
-		cout << "]" << endl;
-		cpu_occupy = 1;
-	}
-	/*Process finishes and goes into i/o state*/
-	//cout << " ";
-	if (running_p.cpu_remain == 0 && running_p.state == 2) {
-		Time--;
-		if (running_p.number_of_burst == 1) {
-			cout << "time " << Time << "ms: Process " << running_p.name << " terminated [Q";
-			for (int j = 0; j < ready_queue.size(); j++) {
-				cout << " " << ready_queue[j].name;
-			}
-			if (ready_queue.size() == 0) {
-				cout << "<empty>";
-			}
-			cout << "]" << endl;
-			cpu_occupy = 0;
-			Time += tcs / 2;
-			track_time_slice = 0;
-			Time += 100000;
-		}
-		else {
-			cout << "time " << Time << "ms: Process " << running_p.name << " completed a CPU burst: ";
-			for (int i = 0; i < p.size(); i++) {
-				if (p[i].name == running_p.name) {
-					p[i].number_of_burst--;
-					cout << p[i].number_of_burst << " bursts to go [Q";
-				}
-			}
-
-			for (int j = 0; j < ready_queue.size(); j++) {
-				cout << " " << ready_queue[j].name;
-			}
-			if (ready_queue.size() == 0) {
-				cout << "<empty>";
-			}
-			cout << "]" << endl;
-
-			running_p.tau = (1 - alpha)*running_p.tau + alpha * running_p.cpu_burst[running_p.burst_num];
-			for (int i = 0; i < p.size(); i++) {
-				if (p[i].name == running_p.name) {
-					p[i].tau = running_p.tau;
-				}
-			}
-			cout << "time " << Time << "ms: Recalculated tau = " << running_p.tau << "ms for process " << running_p.name << " [Q";
-			for (int j = 0; j < ready_queue.size(); j++) {
-				cout << " " << ready_queue[j].name;
-			}
-			if (ready_queue.size() == 0) {
-				cout << "<empty>";
-			}
-			cout << "]" << endl;
-
-			cout << "time " << Time << "ms: Process " << running_p.name << " switching out of CPU; will block on I/O until time ";
-			cout << Time + running_p.io_time[running_p.burst_num] << "ms [Q";
-			for (int j = 0; j < ready_queue.size(); j++) {
-				cout << " " << ready_queue[j].name;
-			}
-			if (ready_queue.size() == 0) {
 				cout << " <empty>";
 			}
 			cout << "]" << endl;
-
-			running_p.io_remain += running_p.io_time[running_p.burst_num];
-
-			for (int i = 0; i < p.size(); i++) {
-				if (p[i].name == running_p.name) {
-					p[i].io_remain = running_p.io_time[running_p.burst_num];
-					p[i].burst_num++;
-					p[i].state = 3;
-				}
-			}
-			running_p.burst_num++;
-			running_p.state = 3;
-			cpu_occupy = 0;
-			track_time_slice = 0;
-		}
-	}
-	/*Once i/o finish, push it back to ready queue*/
-	for (int i = 0; i < p.size(); i++) {
-		if (p[i].state == 3) {
-			if (p[i].io_remain == 0) {
-				ready_queue.push_back(p[i]);
-				p[i].state = 1;			
-			}
+			tcs_check = -1;
 		}
 	}
 
-	/*Preemption*/
 	if (track_time_slice == time_slice && running_p.state == 2) {
+		ready_queue = update_ready(p,ready_queue);
 		if (ready_queue.size() != 0) {
-			cout << "time " << Time << " ms: Time slice expired; process " << running_p.name << " preempted with ";
+			cout << "time " << Time << "ms: Time slice expired; process " << running_p.name << " preempted with ";
 			cout << running_p.cpu_remain << "ms to go [Q ";
 			for (int j = 0; j < ready_queue.size(); j++) {
 				cout << " " << ready_queue[j].name;
@@ -927,17 +904,24 @@ void rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 				cout << "<empty>";
 			}
 			cout << "]" << endl;
-			ready_queue.push_back(running_p);
+			if (order == 1){
+				ready_queue.push_back(running_p);
+				ready_queue = update_ready(p,ready_queue);
+			}
+			else if (order == 0){
+				ready_queue.insert(ready_queue.begin(),running_p);
+				ready_queue = update_ready(p,ready_queue);
+			}
 			track_time_slice = 0;
 			cpu_occupy = 0;
 			running_p.state = 1;
-			running_p.preemptive++;
 			for (int i = 0; i < p.size(); i++) {
 				if (p[i].name == running_p.name) {
 					p[i].preemptive++;
-					running_p.state = 1;
+					p[i].state = 1;
 				}
 			}
+			tcs_check = -tcs/2 - 1;
 		}
 		else {
 			cout << "time " << Time << "ms: Time slice expired; no preemption because ready queue is empty [Q <empty>]" << endl;
@@ -952,22 +936,167 @@ void rr(int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, in
 		}
 	}
 
-
-	/*Running state*/
+	/*Add process from ready queue to cpu burst*/
+	if (cpu_occupy == 0 && ready_queue.size() != 0) {
+		int shortest = 0;
+		ready_queue = update_ready(p,ready_queue);
+		tcs_check++;
+		if (tcs_check == tcs / 2) {
+			tcs_check = 0;
+			for (int l = 0; l < p.size(); l++){
+				if (p[l].name==ready_queue[0].name){
+					ready_queue[0].burst_num = p[l].burst_num;
+				}
+			}
+			if (ready_queue[0].cpu_burst[ready_queue[0].burst_num] != ready_queue[0].cpu_remain && ready_queue[0].cpu_remain > 0){
+				cout << "time " << Time << "ms: Process " << ready_queue[0].name << " started using the CPU with ";
+				cout << ready_queue[0].cpu_remain << "ms remaining [Q";		
+				
+			}
+			else {
+					
+				cout << "time " << Time << "ms: Process " << ready_queue[shortest].name << " started using the CPU for ";
+				cout << ready_queue[0].cpu_burst[ready_queue[0].burst_num] << "ms burst [Q";
+			}
+			
+			for (int i = 0; i < p.size(); i++){
+				if (p[i].name == ready_queue[0].name){
+					p[i].state = 2;
+					running_p = p[i];
+					if (running_p.cpu_remain == 0){
+						running_p.cpu_remain = ready_queue[0].cpu_burst[ready_queue[0].burst_num];
+						p[i].cpu_remain = running_p.cpu_remain;
+					}
+				}
+			}
+			ready_queue.erase(ready_queue.begin(), ready_queue.begin()+1);
+			ready_queue = update_ready(p,ready_queue);
+			for (int j = 0; j < ready_queue.size(); j++) {
+				cout << " " << ready_queue[j].name;
+			}
+			if (ready_queue.size() == 0) {
+				cout << " <empty>";
+			}	
+			cout << "]" << endl;
+			cpu_occupy = 1;
+		}
+	}
+	/*Cpu, io, wait*/
 	for (int i = 0; i < p.size(); i++) {
 		if (p[i].state == 1) {
 			p[i].wait_time++;
 		}
 		else if (p[i].state == 2) {
-			running_p.cpu_remain--;
-			track_time_slice++;
 			p[i].cpu_remain--;
+			track_time_slice++;
+			if (p[i].cpu_remain == 0) {
+				if (p[i].number_of_burst == 1) {
+					cout << "time " << Time << "ms: Process " << p[i].name << " terminated [Q";
+					ready_queue = update_ready(p,ready_queue);
+					for (int j = 0; j < ready_queue.size(); j++) {
+						cout << " " << ready_queue[j].name;
+					}
+					if (ready_queue.size() == 0) {
+						cout << " <empty>";
+					}
+					cout << "]" << endl;
+					cpu_occupy = 0;
+					p[i].state = -1;
+					p[i].context_switch++;
+					running_p.state = -1;
+					p[i].number_of_burst = 0;					
+					int count_end = 0;
+					for (int j = 0; j < p.size(); j++) {
+						if (p[j].state == -1) {
+							count_end++;
+						}
+					}
+					if (count_end == p.size()) {
+						Time+= tcs/2;
+						cout << "time " << Time << "ms: Simulator ended for RR [Q <empty>]" << endl;
+						return 0;
+					}
+					track_time_slice = 0;
+				}
+				else if (p[i].number_of_burst > 1) {
+					cout << "time " << Time << "ms: Process " << p[i].name << " completed a CPU burst: ";
+					p[i].number_of_burst--;
+					p[i].context_switch++;
+					if (p[i].number_of_burst == 1){
+						cout << p[i].number_of_burst << " burst to go [Q";
+					}
+					else{
+						cout << p[i].number_of_burst << " bursts to go [Q";
+					}
+					
+					ready_queue = update_ready(p,ready_queue);
+					for (int j = 0; j < ready_queue.size(); j++) {
+						cout << " " << ready_queue[j].name;
+					}
+					if (ready_queue.size() == 0) {
+						cout << " <empty>";
+					}
+					cout << "]" << endl;
+					p[i].tau = (1 - alpha)*p[i].tau + alpha * p[i].cpu_burst[p[i].burst_num];	
+					/*cout << "time " << Time << "ms: Recalculated tau = " << p[i].tau << "ms for process " << p[i].name << " [Q";
+					ready_queue = update_ready(p,ready_queue);
+					for (int j = 0; j < ready_queue.size(); j++) {
+						cout << " " << ready_queue[j].name;
+					}
+					if (ready_queue.size() == 0) {
+						cout << " <empty>";
+					}
+					cout << "]" << endl;*/
+					cout << "time " << Time << "ms: Process " << p[i].name << " switching out of CPU; will block on I/O until time ";
+					cout << Time + p[i].io_time[p[i].burst_num] << "ms [Q";
+					for (int j = 0; j < ready_queue.size(); j++) {
+						cout << " " << ready_queue[j].name;
+					}
+					if (ready_queue.size() == 0) {
+						cout << " <empty>";
+					}
+					cout << "]" << endl;
+					
+					p[i].io_remain = p[i].io_time[p[i].burst_num];
+					p[i].burst_num++;
+					p[i].state = 3;
+					running_p.state = 3;
+					//p[i].
+					cpu_occupy = 0;
+					ready_queue = update_ready(p,ready_queue);
+					track_time_slice = 0;
+				}
+			}
 		}
 		else if (p[i].state == 3) {
 			p[i].io_remain--;
+			if (p[i].io_remain == 0) {
+				cout << "time " << Time << "ms: Process " << p[i].name /*<< " (tau " << p[i].tau << "ms) */<<" completed I/O; added to ready queue";
+				cout << " [Q";
+				if (order == 1){
+					ready_queue.push_back(p[i]);
+					ready_queue = update_ready(p,ready_queue);
+				}
+				else if (order == 0){
+					ready_queue.insert(ready_queue.begin(),p[i]);
+					ready_queue = update_ready(p,ready_queue);
+				}
+				ready_queue = update_ready(p,ready_queue);
+				for (int j = 0; j < ready_queue.size(); j++) {
+					cout << " " << ready_queue[j].name;
+				}
+				if (ready_queue.size() == 0) {
+					cout << " <empty>";
+				}
+				cout << "]" << endl;
+				p[i].state = 1;
+                //cpu_occupy = 1;
+				ready_queue = update_ready(p,ready_queue);
+			}
 		}
 		p[i].turnaround_time = Time - p[i].arrive_time;
-	}
+	}	
+	return 1;
 }
 /*---------------------------------------------------------------------------------------------------------*/
 
@@ -1016,8 +1145,7 @@ int main(int argc, char** argv){
 	sjf(total_sjf,ready_queue,context_switch_time,number_of_process,alpha);
 	//for(int i=0; i<P[0].io_time.size();i++){cout << P[0].io_time[i] << endl;}
 
-	output_process(total_fcfs);
-	fcfs(total_fcfs,ready_queue,context_switch_time,number_of_process);
+	
 	/*int srt(int &Time, int tcs, vector<Process> &p, vector<Process> ready_queue, int &cpu_occupy, Process *running_p, double alpha, int &tcs_check)*/
 	
 	int Time = 0;
@@ -1027,29 +1155,34 @@ int main(int argc, char** argv){
 	Process running(' ',lamda,limit);
 	running.cpu_remain = 0;
 	cout << endl;
-	while (Time < 100000){
+	while (Time < 1112070){
 		int temp = srt(Time,(int)context_switch_time,P,ready,cpu_occupy,running,(double)alpha, check);
 		if (temp == 0){
 			break;
 		}
 		Time++;
 	}
-
-	/*
+output_process(total_fcfs);
+	fcfs(total_fcfs,ready_queue,context_switch_time,number_of_process);
+	P = generate(seed,number_of_process,limit, lamda);
+	int order = 1;
+	check = -1;
 	int track_time_slice = 0;
-	int Time = 0;
-	int cpu_occupy = 0;
-	vector<Process> ready;
-	Process running(' ',lamda,limit);
-	running.cpu_remain = 0;
-	P[0].state = 0;
-	P[0].burst_num = 0;
+	Time = 0;
+	cpu_occupy = 0;
+	vector<Process> ready1;
+	Process running1(' ',lamda,limit);
+	running1.cpu_remain = 0;
 	cout << endl;
-	while (Time < 14000){
-		rr(Time,(int)context_switch_time,P,ready,cpu_occupy,running,(double)alpha,time_slice,track_time_slice);
+	while (Time < 12000000){
+		/*int &Time, int tcs, vector<Process> &p, vector<Process> &ready_queue, int &cpu_occupy, Process &running_p, double alpha, int time_slice, int& track_time_slice, int order*/
+		int temp = rr(Time,(int)context_switch_time,P,ready1,cpu_occupy,running1,(double)alpha,time_slice,track_time_slice,order,check);
+		if (temp == 0){
+			break;
+		}
 		Time++;
 	}
-	*/
+	
 	return 0;
 }
 

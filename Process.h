@@ -23,7 +23,7 @@ public:
 	int wait_time;
 	int turnaround_time;
 	int preemptive;
-
+	int context_switch;
 	int cpu_remain;
 	int io_remain;
 
