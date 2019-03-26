@@ -44,7 +44,7 @@ vector<Process> generate(int seed, int np, float limit, float lamda){
 map<char,Process> Upload(vector<Process> p){
 
         map<char,Process> total;
-        for(int i=0; i<p.size(); i++){
+        for(unsigned int i=0; i<p.size(); i++){
                 total.insert(pair<char,Process>(p[i].name,p[i]));
         }
         return total;
@@ -83,7 +83,7 @@ void output(string algorithm,map<char,Process> total,int tcs,int tncs,int np){
 		//cout << itr->second.turnaround_time << endl;
                 ave_wait += itr -> second.wait_time;
                 total_preemetive += itr->second.preemptive;
-                for(int j=0;j<itr->second.cpu_burst.size();j++){ave_cpu_burst += itr->second.cpu_burst[j];}
+                for(unsigned int j=0;j<itr->second.cpu_burst.size();j++){ave_cpu_burst += itr->second.cpu_burst[j];}
                 ave_cpu_burst /= itr->second.cpu_burst.size();
 
         }
@@ -151,7 +151,7 @@ vector<char> compare_tau(vector<char>ready_queue,map<char,Process> total){
         vector<char> temp =ready_queue;
         if(ready_queue.size()<2){return temp;}
         int j=0;
-        for(int i=1; i<temp.size();i++){
+        for(unsigned int i=1; i<temp.size();i++){
 
                 char key = temp[i];
                 j = i-1;
@@ -187,7 +187,7 @@ char part_sjf(int Time,bool &context_switched,bool &leave,int tcs,int &tx,char &
 	if(current == '-' && ready_queue.size() != 0){	
                 
 		//cout << "enter" << endl;
-		int size = ready_queue.size();
+		
 		current = ready_queue[0];
 		total[current].state = 2;
 		ready_queue.erase(ready_queue.begin());
@@ -314,7 +314,7 @@ char part_fcfs(int Time,bool &context_switched,bool &leave,int tcs,int &tx,char 
 	if(current == '-' && ready_queue.size() != 0){
 
 		//cout << "enter" << endl;
-		int size = ready_queue.size();
+		
 		current = ready_queue[0];
 		total[current].state = 2;
 		ready_queue.erase(ready_queue.begin());
@@ -406,7 +406,7 @@ void output_process(map<char,Process> total){
 
 void wait(vector<char> ready_queue,map<char,Process> &total){
 
-	for(int i=0;i<ready_queue.size();i++){total[ready_queue[i]].wait_time++;}
+	for(unsigned int i=0;i<ready_queue.size();i++){total[ready_queue[i]].wait_time++;}
 }
 
 void fcfs(map<char,Process> &total,vector<char> &ready_queue,int context_switch_time,int number_of_process){
@@ -418,14 +418,14 @@ void fcfs(map<char,Process> &total,vector<char> &ready_queue,int context_switch_
         char last = '-';
         bool context_switch = false;
         char current = '-';
-        char result = '-';
+       
         bool leave = false;
 
 	while(!all_finished(total)){
 
 		Time ++;
 		arrive_and_io_fcfs(Time,ready_queue,total);
-                result = part_fcfs(Time,context_switch,leave,t_cs,tx,last,current,ntc,ready_queue,total);
+                part_fcfs(Time,context_switch,leave,t_cs,tx,last,current,ntc,ready_queue,total);
 		wait(ready_queue,total);
 
 	}
@@ -444,9 +444,7 @@ void sjf(map<char,Process> &total, vector<char> &ready_queue, int context_switch
         char last = '-';
         bool context_switch = false;
         char current = '-';
-        char result = '-';
         bool leave = false;
-        bool finish = false;
         //print_queue(ready_queue);
         vector<char> add_;
 
@@ -459,7 +457,7 @@ void sjf(map<char,Process> &total, vector<char> &ready_queue, int context_switch
 			print_queue(ready_queue);
 		}
                 arrive_and_io_sjf(Time,ready_queue,total);
-                result = part_sjf(Time,context_switch,leave,t_cs,tx,last,current,alpha,ntc,ready_queue,total);
+                part_sjf(Time,context_switch,leave,t_cs,tx,last,current,alpha,ntc,ready_queue,total);
 		wait(ready_queue,total);
 		//cout << ntc << endl;
                 

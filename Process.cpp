@@ -82,11 +82,11 @@ int Process::update(int s){
 
 	if(s == 3){
 
-		if(io_remain != 0 || io_ptr == io_time.size()){return -1;} //only update when io_remain == 0
+		if(io_remain != 0 || io_ptr == (int)io_time.size()){return -1;} //only update when io_remain == 0
 
 		state = 1; //ready
 		io_ptr ++;
-		if(io_ptr == io_time.size()){return -2;}
+		if(io_ptr == (int)io_time.size()){return -2;}
 		//cout <<io_time.size() << " < " <<  io_ptr << endl;
 		io_remain = io_time[io_ptr];
 		return 1;
@@ -94,15 +94,17 @@ int Process::update(int s){
 
 	if(s == 1 || s == 2){
 
-		if(cpu_remain != 0 || cpu_ptr == cpu_burst.size()){return -1;} //only update when cpu_remain == 0
+		if(cpu_remain != 0 || cpu_ptr == (int)cpu_burst.size()){return -1;} //only update when cpu_remain == 0
 
 		state = 3;
 		cpu_ptr ++;
-		if(cpu_ptr == cpu_burst.size()){return -2;}
+		if(cpu_ptr == (int)cpu_burst.size()){return -2;}
 		cpu_remain = cpu_burst[cpu_ptr];
 		return 3;
 	
 	}
+
+	return 0;
 }
                 
 bool Process::IsProcessFinished() const{
@@ -153,13 +155,13 @@ void Process::time_generation(float limit,float lamda){
 			}
 		}
 
-		if(cpu_burst.size() == num_of_burst){c1 = false;}
-		if(io_time.size() == (num_of_burst - 1)){c2 = false;}
+		if((int)cpu_burst.size() == num_of_burst){c1 = false;}
+		if((int)io_time.size() == (num_of_burst - 1)){c2 = false;}
 
 		//cout << "C: " << cpu_burst.size() << "I: " << io_time.size() << endl;
 	}
 
-	for(int i=0; i<cpu_burst.size(); i++){
+	for(unsigned int i=0; i<cpu_burst.size(); i++){
 
 		int time = cpu_burst[i] + interarrival[i];
 		interarrival.push_back(time);
@@ -188,7 +190,7 @@ bool Process::IsArrive(int time) const{
 void Process::output(){
 
 	cout << "Process " << name << "[NEW] (arrival time "<< arrive_time <<" ms) "<< cpu_burst.size()  <<" CPU bursts" << endl;
-	for(int i=0; i<cpu_burst.size()-1; i++){
+	for(unsigned int i=0; i<cpu_burst.size()-1; i++){
                     	
 		cout << "--> CPU burst "<< cpu_burst[i] << " ms";
 		cout << "--> I/O burst " << io_time[i] << " ms" << endl;
